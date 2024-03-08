@@ -19,7 +19,7 @@ def portfolio_metrics(dataframe, columns_to_use, years_simulated=5, set_size=3, 
     filtered_df = dataframe[dataframe['Date'] >= earliest_date]
 
     for selected_columns in all_combinations:
-        returns = filtered_df[list(selected_columns)].pct_change().dropna()
+        returns = filtered_df[list(selected_columns)].pct_change(fill_method=None).dropna()
         risk_free_rate = filtered_df['risk_free_rate'].loc[returns.index].mean() / 100  # Convert to decimal
         weights = np.array([1./set_size] * set_size)
 
@@ -60,7 +60,7 @@ def portfolio_metrics(dataframe, columns_to_use, years_simulated=5, set_size=3, 
 
         # Portfolio Beta
         if include_beta:
-            spy_returns = filtered_df['SPY'].pct_change().dropna()
+            spy_returns = filtered_df['SPY'].diff() / filtered_df['SPY'].shift(1)
             aligned_data = pd.concat([portfolio_return_series, spy_returns], axis=1).dropna()
             portfolio_beta = aligned_data.iloc[:, 0].cov(aligned_data.iloc[:, 1]) / aligned_data.iloc[:, 1].var()
 
@@ -98,4 +98,4 @@ def sort_and_display(df, sort_by, ascending=True, rows_to_show=5):
     columns_to_display = stock_cols + [sort_by]
 
     # Display the sorted and filtered DataFrame
-    print(sorted_df.loc[:, columns_to_display])
+    return sorted_df.loc[:, columns_to_display]
