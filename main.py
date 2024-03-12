@@ -21,8 +21,9 @@ class PortfolioRequest(BaseModel):
     years_simulated: int
     set_size: int
     tickers: List[str]
-    order_by: str
-    ascending: bool
+    order_by: str = None
+    ascending: bool = None
+    risk_tolerance: str  # New field for risk tolerance
 
 @app.post("/portfolio/")
 async def optimize_portfolio(portfolio_request: PortfolioRequest):
@@ -31,6 +32,7 @@ async def optimize_portfolio(portfolio_request: PortfolioRequest):
     set_size = portfolio_request.set_size
     order_by = portfolio_request.order_by
     ascending = portfolio_request.ascending
+    risk_tolerance = portfolio_request.risk_tolerance
 
     data = await fetch_data(tickers, years_simulated)
 
@@ -41,10 +43,27 @@ async def optimize_portfolio(portfolio_request: PortfolioRequest):
 
     results_df = portfolio_metrics(data, columns_to_use, set_size=set_size, years_simulated=years_simulated)
 
-    sorted_results = results_df.sort_values(by=order_by, ascending=ascending).head(3)
+    # Apply filters based on risk tolerance
+    if risk_tolerance == "Higher":
+        # Prioritize portfolios with higher Total_Return and Sharpe_Ratio
+        results_df = (
+            results_df.sort_values(by='Sharpe_Ratio',ascending=False)
+                       .sort_values(by='Sortino_Ratio', ascending=False)
+                       .sort_values(by='Total_Return', ascending=False)
+        )
+    elif risk_tolerance == "Lower":
+        # Prioritize portfolios with lower VaR, Max_Drawdown, and higher Total_Return
+        results_df = (
+            results_df.sort_values(by='VaR', ascending=True)
+                       .sort_values(by='Total_Return', ascending=False)
+                       
+        )
+
+    sorted_results = results_df.head(3)
+
+
 
     return sorted_results.to_dict(orient='records')
-
 @app.get("/optimize")
 async def optimize_portfolio(
     years_simulated: int = Query(..., description="Number of years to simulate."),
